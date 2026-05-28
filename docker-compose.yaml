@@ -14,11 +14,6 @@ services:
       - "5433:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
-      interval: 3s
-      timeout: 3s
-      retries: 10
     networks:
       - app-network
 
@@ -30,11 +25,6 @@ services:
       --requirepass redissecret
     volumes:
       - redis_data:/data
-    healthcheck:
-      test: ["CMD", "redis-cli", "-a", "redissecret", "ping"]
-      interval: 3s
-      timeout: 10s
-      retries: 10
     networks:
       - app-network
 
@@ -50,11 +40,6 @@ services:
       - "9011:9001"
     volumes:
       - minio-data:/data
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
     networks:
       - app-network
 
@@ -147,11 +132,11 @@ services:
       - "8010:8000"
     depends_on:
       postgres:
-        condition: service_healthy
+        condition: service_started
       redis:
-        condition: service_healthy
+        condition: service_started
       minio:
-        condition: service_healthy
+        condition: service_started
       cloudflared:
         condition: service_started
     networks:
