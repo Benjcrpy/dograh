@@ -158,11 +158,14 @@ services:
     networks:
       - app-network
 
-  cloudflared:
+    cloudflared:
     image: cloudflare/cloudflared:latest
-    command: tunnel --no-autoupdate --url http://api:8000 --metrics 0.0.0.0:2000
+    command: tunnel --no-autoupdate --url http://ui:3010 --metrics 0.0.0.0:2000
     ports:
       - "2010:2000"
+    depends_on:
+      ui:
+        condition: service_started
     networks:
       - app-network
 
