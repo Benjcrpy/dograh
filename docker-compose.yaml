@@ -1,4 +1,13 @@
 services:
+  coolify-build-anchor:
+    build:
+      context: .
+      dockerfile_inline: |
+        FROM alpine:3.20
+        CMD ["true"]
+    profiles:
+      - build-only
+
   postgres:
     image: pgvector/pgvector:pg17
     environment:
@@ -50,34 +59,24 @@ services:
     environment:
       ENVIRONMENT: "${ENVIRONMENT:-local}"
       LOG_LEVEL: "INFO"
-
       BACKEND_API_ENDPOINT: "${BACKEND_API_ENDPOINT:-http://217.15.175.196:8010}"
-
       DATABASE_URL: "postgresql+asyncpg://postgres:postgres@postgres:5432/postgres"
-
       REDIS_URL: "redis://:redissecret@redis:6379"
-
       ENABLE_AWS_S3: "false"
-
       MINIO_ENDPOINT: "minio:9000"
       MINIO_PUBLIC_ENDPOINT: "${MINIO_PUBLIC_ENDPOINT:-http://217.15.175.196:9010}"
       MINIO_ACCESS_KEY: "minioadmin"
       MINIO_SECRET_KEY: "minioadmin"
       MINIO_BUCKET: "voice-audio"
       MINIO_SECURE: "false"
-
       FASTAPI_WORKERS: "${FASTAPI_WORKERS:-1}"
-
       TURN_HOST: "${TURN_HOST:-}"
       TURN_SECRET: "${TURN_SECRET:-}"
       FORCE_TURN_RELAY: "${FORCE_TURN_RELAY:-false}"
-
       OSS_JWT_SECRET: "${OSS_JWT_SECRET:?OSS_JWT_SECRET must be set to a strong secret}"
-
       ENABLE_TELEMETRY: "${ENABLE_TELEMETRY:-false}"
       POSTHOG_API_KEY: ""
       POSTHOG_HOST: ""
-
     ports:
       - "8010:8000"
     depends_on:
@@ -117,76 +116,12 @@ services:
     networks:
       - app-network
 
-  dograh-init:
-    image: bash:5.2
-    profiles: ["remote", "local-turn"]
-    environment:
-      ENVIRONMENT: "${ENVIRONMENT:-local}"
-      SERVER_IP: "${SERVER_IP:-}"
-      PUBLIC_HOST: "${PUBLIC_HOST:-}"
-      PUBLIC_BASE_URL: "${PUBLIC_BASE_URL:-}"
-      BACKEND_API_ENDPOINT: "${BACKEND_API_ENDPOINT:-http://217.15.175.196:8010}"
-      MINIO_PUBLIC_ENDPOINT: "${MINIO_PUBLIC_ENDPOINT:-http://217.15.175.196:9010}"
-      TURN_HOST: "${TURN_HOST:-}"
-      TURN_SECRET: "${TURN_SECRET:-}"
-      FASTAPI_WORKERS: "${FASTAPI_WORKERS:-1}"
-    volumes:
-      - ./scripts:/workspace/scripts:ro
-      - ./deploy:/workspace/deploy:ro
-      - ./certs:/certs:ro
-      - nginx-generated:/generated/nginx
-      - coturn-generated:/generated/coturn
-    command:
-      - /workspace/scripts/run_dograh_init.sh
-
-  nginx:
-    image: nginx:alpine
-    profiles: ["remote"]
-    depends_on:
-      dograh-init:
-        condition: service_completed_successfully
-      ui:
-        condition: service_started
-    ports:
-      - "8088:80"
-      - "8443:443"
-    volumes:
-      - nginx-generated:/etc/nginx/conf.d:ro
-      - ./certs:/etc/nginx/certs:ro
-    networks:
-      - app-network
-
-  coturn:
-    image: coturn/coturn:4.8.0
-    restart: unless-stopped
-    profiles: ["remote", "local-turn"]
-    depends_on:
-      dograh-init:
-        condition: service_completed_successfully
-    ports:
-      - "3478:3478/udp"
-      - "3478:3478/tcp"
-      - "5349:5349/udp"
-      - "5349:5349/tcp"
-      - "49152-49200:49152-49200/udp"
-    volumes:
-      - coturn-generated:/etc/coturn:ro
-    command:
-      - -c
-      - /etc/coturn/turnserver.conf
-    networks:
-      - app-network
-
 volumes:
   postgres_data:
   redis_data:
   minio-data:
     driver: local
   shared-tmp:
-    driver: local
-  nginx-generated:
-    driver: local
-  coturn-generated:
     driver: local
 
 networks:
